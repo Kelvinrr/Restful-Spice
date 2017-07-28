@@ -4,8 +4,9 @@ from kernel_manager import create_kernel_listing
 from create_isd import isd_from_json
 from utils import NumpyAwareJSONEncoder
 
-
+# Configure the app
 app = Flask(__name__)
+app.config.from_object('config.DevelopmentConfig')
 
 @app.route('/')
 def index():
@@ -32,7 +33,7 @@ def generate_isd():
 def api_description():
     resp = {'success':True, 'data':{}}
     data = resp['data']
-    data['available_missions'] = {'mercury':{'messenger': '/api/1.0/mercury/messenger'}}
+    data['available_missions'] = app.config['AVAILABLE_MISSIONS']
     return jsonify(resp)
 
 @app.route('/api/1.0/socet_set', methods=['GET', 'POST'])
@@ -77,4 +78,3 @@ if __name__ == '__main__':
     app.meta_kernels = meta_kernels
     app.json_encoder = NumpyAwareJSONEncoder
     app.response_failure = {'success':False, 'error_msg':""}
-    app.run(debug=True)
