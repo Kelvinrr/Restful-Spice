@@ -1,2 +1,18 @@
-{"mercury":["messenger"],
- "moon":["apollo15", "apollo16", "apollo17"]}
+{
+	"mercury": {
+		"messenger": {
+			"root": "/data/spice/mess-e_v_h-spice-6-v1.0/messsp_1000"
+		}
+	},
+	"moon": {
+		"apollo15": {
+			"root": "/data/spice/apollo.sese.asu.edu/EPHEMERIS/kernels/AS15"
+		},
+		"apollo16": {
+			"root": "/data/spice/apollo.sese.asu.edu/EPHEMERIS/kernels/AS16"
+		},
+		"apollo17": {
+			"root": "/data/spice/apollo.sese.asu.edu/EPHEMERIS/kernels/AS17"
+		}
+	}
+}

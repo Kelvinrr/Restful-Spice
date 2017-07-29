@@ -8,7 +8,12 @@ def isd_from_json(data, meta):
     # The instrument name does not match the naming convention used by spice, so we need another lookup
     instrument_name = {'MDIS-NAC':'MSGR_MDIS_NAC',
                    'MERCURY DUAL IMAGING SYSTEM NARROW ANGLE CAMERA':'MSGR_MDIS_NAC',
-                   'MERCURY DUAL IMAGING SYSTEM WIDE ANGLE CAMERA':'MSGR_MDIS_WAC'}
+                   'MERCURY DUAL IMAGING SYSTEM WIDE ANGLE CAMERA':'MSGR_MDIS_WAC',
+                   'METRIC CAMERA': 'A15_METRIC'}
+    # TODO: SQLite Database is looking real good for managing these mappings
+    spacecraft_lookup = {'APOLLO 15 COMMAND AND SERVICE MODULE':'apollo15'}
+
+    spacecraft_name_lookup = {'APOLLO 15 COMMAND AND SERVICE MODULE': 'APOLLO 15'}
 
     # This is the return dict
     isd = {}
@@ -21,13 +26,30 @@ def isd_from_json(data, meta):
 
 
     # Load the meta kernel
-    obs_kernels = meta[target_name.lower()][spacecraft_name.lower()]
-    spice.furnsh(obs_kernels[year][0])
+    try:
+        # Use the lookup from the API (available_missions.json)
+        obs_kernels = meta[target_name.lower()][spacecraft_name.lower()]
+    except:
+        # Allow a different name in the API and the full PDS name in here
+        custom_spacecraft_name = spacecraft_lookup[spacecraft_name]
+        obs_kernels = meta[target_name.lower()][custom_spacecraft_name.lower()]
+
+    # Some kernels are differentiated by year, others are not
+    try:
+        spice.furnsh(obs_kernels[year][0])
+    except:
+        spice.furnsh(obs_kernels['all'][0])
+
 
     # Spice likes ids over names, so grab the ids from the names
     instrument_name = instrument_name[data['instrument']]
-    spacecraft_id = spice.bods2c(spacecraft_name)
     ikid = spice.bods2c(instrument_name) * -1
+
+    try:
+        spacecraft_id = spice.bods2c(spacecraft_name)
+    except:
+        spacecraft_name = spacecraft_name_lookup[spacecraft_name]
+        spacecraft_id = spice.bods2c(spacecraft_name)
 
     # Load the instrument and target metadata into the ISD
     isd['instrument_id'] = instrument_name
@@ -38,23 +60,39 @@ def isd_from_json(data, meta):
     reference_frame = 'IAU_{}'.format(target_name)
 
     # Load information from the IK kernel
-    isd['focal_length_epsilon'] = spice.gdpool('INS-{}_FL_UNCERTAINTY'.format(ikid), 0, 1)
+    # TODO: The 'what' assocaited with each ISD needs to be injected using
+    #  something like dependency injection and IoC.  A popular methods is
+    #  JSON/XML configuration that provides the mappings.
+
+    try:
+        isd['focal_length_epsilon'] = spice.gdpool('INS-{}_FL_UNCERTAINTY'.format(ikid), 0, 1)
+    except: pass
     isd['nlines'] = spice.gipool('INS-{}_PIXEL_LINES'.format(ikid), 0, 1)
     isd['nsamples'] = spice.gipool('INS-{}_PIXEL_SAMPLES'.format(ikid), 0, 1)
     isd['original_half_lines'] = isd['nlines'] / 2.0
     isd['original_half_samples'] = isd['nsamples'] / 2.0
     isd['pixel_pitch'] = spice.gdpool('INS-{}_PIXEL_PITCH'.format(ikid), 0, 1)
     isd['ccd_center'] = spice.gdpool('INS-{}_CCD_CENTER'.format(ikid), 0, 2)
-    isd['ifov'] = spice.gdpool('INS-{}_IFOV'.format(ikid), 0, 1)
+    try:
+        isd['ifov'] = spice.gdpool('INS-{}_IFOV'.format(ikid), 0, 1)
+    except:pass
     isd['boresight'] = spice.gdpool('INS-{}_BORESIGHT'.format(ikid), 0, 3)
     isd['transx'] = spice.gdpool('INS-{}_TRANSX'.format(ikid), 0, 3)
     isd['transy'] = spice.gdpool('INS-{}_TRANSY'.format(ikid), 0, 3)
     isd['itrans_sample'] = spice.gdpool('INS-{}_ITRANSS'.format(ikid), 0, 3)
     isd['itrans_line'] = spice.gdpool('INS-{}_ITRANSL'.format(ikid), 0, 3)
-    isd['odt_x'] = spice.gdpool('INS-{}_OD_T_X'.format(ikid), 0, 10)
-    isd['odt_y'] = spice.gdpool('INS-{}_OD_T_Y'.format(ikid), 0, 10)
-    isd['starting_detector_sample'] = spice.gdpool('INS-{}_FPUBIN_START_SAMPLE'.format(ikid), 0, 1)
-    isd['starting_detector_line'] = spice.gdpool('INS-{}_FPUBIN_START_LINE'.format(ikid), 0, 1)
+    try:
+        isd['odt_x'] = spice.gdpool('INS-{}_OD_T_X'.format(ikid), 0, 10)
+    except: pass
+    try:
+        isd['odt_y'] = spice.gdpool('INS-{}_OD_T_Y'.format(ikid), 0, 10)
+    except: pass
+    try:
+        isd['starting_detector_sample'] = spice.gdpool('INS-{}_FPUBIN_START_SAMPLE'.format(ikid), 0, 1)
+    except: pass
+    try:
+        isd['starting_detector_line'] = spice.gdpool('INS-{}_FPUBIN_START_LINE'.format(ikid), 0, 1)
+    except: pass
 
 
 

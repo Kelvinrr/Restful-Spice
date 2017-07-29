@@ -4,23 +4,47 @@ import os
 import re
 
 
-def create_kernel_listing():
-    spice_root = '/data/spice/mess-e_v_h-spice-6-v1.0/messsp_1000/'
-    meta_root =  os.path.join(spice_root, 'extras/mk')
+def create_kernel_listing(available_missions):
+    """
+    Take a dict of available missions that include a "root" key that identifies
+    the root PATH to a given mission kernel directory and generate the
+    lookup table of available metakernels.
 
-    files = glob.glob(meta_root + '/*.tm')
+    Parameters
+    ----------
+    available_missions : dict
+                         With top level keys being the body and second level
+                         keys being the mission
 
-    # Hard coded to Mercury, but easy enough to deal with applying this to any number of directories.
-    meta = OrderedDict([])
-    meta_kernels = {'mercury':{'messenger': meta}}
-    for f in files:
-        base = os.path.basename(f)
-        base.split('_')
-        _, year, version = base.split('_')
-        meta.setdefault(year, []).append(base)
-    for k, v in meta.items():
-        sorted_meta = sorted(v, key=lambda x: re.search('v[0-9]+', x).group(), reverse=True)
-        meta[k] = [os.path.join(meta_root, i) for i in sorted_meta]
+    """
+    year_re = re.compile('(\d{4})')
+    version_re = re.compile('v[0-9]+')
 
-    meta_kernels['mercury']['messenger'] = meta
+    meta_kernels = {}
+    for body, missions in available_missions.items():
+        has_year = False
+        meta_kernels[body] = {}
+        for mission, root in missions.items():
+
+            # Build the PATHs
+            spice_root = root["root"]
+            meta_root =  os.path.join(spice_root, 'extras/mk')
+            files = glob.glob(meta_root + '/*.tm')
+            # Grab the metas in descending order
+            meta = OrderedDict([])
+            for f in files:
+                year = year_re.findall(f)
+                if year:
+                    has_year = True
+                    base = os.path.basename(f)
+                    meta.setdefault(year[0], []).append(base)
+                else:
+                    base = os.path.basename(f)
+                    meta.setdefault('all', []).append(base)
+
+            for k, v in meta.items():
+                sorted_meta = sorted(v, key=lambda x: re.search('v[0-9]+', x).group(), reverse=True)
+                meta[k] = [os.path.join(meta_root, i) for i in sorted_meta]
+
+            meta_kernels[body][mission] = meta
     return meta_kernels

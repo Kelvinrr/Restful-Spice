@@ -50,8 +50,20 @@ def socet_set():
         resp['data'] = 'POSTing to this endpoint will return a SOCET compliant .set file.'
     return jsonify(resp)
 
+@app.route('/api/1.0/<body>')
+def available_missions_by_body(body):
+    resp = {'success':True, 'data':{}}
+    data = resp['data']
+    body = body.lower()
+    missions = list(app.meta_kernels[body].keys())
+    data['links'] = []
 
-@app.route('/api/1.0/<body>/<mission>/available_kernels')
+    for i in missions:
+        data['links'].append({'name':i,
+                   'href':'/api/1.0/{}/{}'.format(body, i)})
+    return jsonify(resp)
+
+@app.route('/api/1.0/<body>/<mission>')
 def available_kernels(body, mission):
     resp = {'success':True, 'data':{}}
     data = resp['data']
@@ -62,7 +74,7 @@ def available_kernels(body, mission):
     data['description'] = "All available meta kernels for a given body and mission in sorted order.  The first meta kernel in the list will be loaded unless a different metakernel is specified."
     return  jsonify(resp)
 
-@app.route('/api/1.0/<body>/<mission>/<year>/available_kernels')
+@app.route('/api/1.0/<body>/<mission>/<year>')
 def available_kernels_by_year(body, mission, year):
     resp = {'success':True, 'data':{}}
     data = resp['data']
@@ -74,7 +86,7 @@ def available_kernels_by_year(body, mission, year):
     return  jsonify(resp)
 
 if __name__ == '__main__':
-    meta_kernels = create_kernel_listing()
-    app.meta_kernels = meta_kernels
+    app.meta_kernels = create_kernel_listing(app.config['AVAILABLE_MISSIONS'])
     app.json_encoder = NumpyAwareJSONEncoder
     app.response_failure = {'success':False, 'error_msg':""}
+    app.run()
